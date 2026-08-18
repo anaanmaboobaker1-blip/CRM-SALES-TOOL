@@ -1,0 +1,367 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+}
+
+model User {
+  id                  Int                @id @default(autoincrement())
+  email               String             @unique
+  password            String
+  name                String
+  roleId              Int
+  role                Role               @relation(fields: [roleId], references: [id])
+  employee            Employee?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deletedAt           DateTime?
+  leads               Lead[]
+  leadNotes           LeadNote[]
+  assignedCustomers   Customer[]         @relation("AssignedSalesperson")
+  customerNotes       CustomerNote[]
+  customerDocuments   CustomerDocument[]
+  deals               Deal[]             @relation("DealSalesperson")
+  dealNotes           DealNote[]
+  activities          Activity[]         @relation("AssignedActivityEmployee")
+  quotations          Quotation[]        @relation("QuotationSalesperson")
+  salesTargets        SalesTarget[]      @relation("SalespersonTarget")
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+}
+
+model Team {
+  id        Int        @id @default(autoincrement())
+  name      String
+  managerId Int?
+  manager   Employee?  @relation("TeamManager", fields: [managerId], references: [id])
+  employees Employee[] @relation("TeamEmployees")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Employee {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  phone        String?
+  teamId       Int?
+  team         Team?    @relation("TeamEmployees", fields: [teamId], references: [id])
+  managedTeams Team[]   @relation("TeamManager")
+  userId       Int?     @unique
+  user         User?    @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Lead {
+  id                  Int        @id @default(autoincrement())
+  name                String
+  company             String?
+  phone               String?
+  email               String?
+  source              String
+  status              String
+  priority            String
+  ownerId             Int?
+  owner               User?      @relation(fields: [ownerId], references: [id])
+  nextFollowUp        DateTime?
+  convertedAt         DateTime?
+  convertedCustomerId Int?
+  convertedContactId  Int?
+  convertedDealId     Int?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  deletedAt           DateTime?
+  notes               LeadNote[]
+  activities          Activity[] @relation("LeadActivities")
+}
+
+model LeadNote {
+  id        Int      @id @default(autoincrement())
+  leadId    Int
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  note      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id                    Int                @id @default(autoincrement())
+  name                  String
+  companyName           String?
+  customerType          String
+  phone                 String?
+  email                 String?
+  gstin                 String?
+  billingAddress        String?
+  shippingAddress       String?
+  customerGroup         String?
+  status                String
+  assignedSalespersonId Int?
+  assignedSalesperson   User?              @relation("AssignedSalesperson", fields: [assignedSalespersonId], references: [id])
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  deletedAt             DateTime?
+  contacts              CustomerContact[]
+  tags                  CustomerTag[]
+  documents             CustomerDocument[]
+  notes                 CustomerNote[]
+  deals                 Deal[]
+  quotations            Quotation[]
+  salesOrders           SalesOrder[]
+  activities            Activity[]         @relation("CustomerActivities")
+}
+
+model CustomerContact {
+  id           Int          @id @default(autoincrement())
+  customerId   Int
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  name         String
+  designation  String?
+  phone        String?
+  email        String?
+  isPrimary    Boolean      @default(false)
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deals        Deal[]
+  quotations   Quotation[]
+  salesOrders  SalesOrder[]
+}
+
+model CustomerTag {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+  tag        String
+  createdAt  DateTime @default(now())
+}
+
+model CustomerDocument {
+  id           Int      @id @default(autoincrement())
+  customerId   Int
+  customer     Customer @relation(fields: [customerId], references: [id])
+  name         String
+  filePath     String
+  fileType     String?
+  uploadedById Int
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model CustomerNote {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  note       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PipelineStage {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Deal {
+  id                  Int             @id @default(autoincrement())
+  name                String
+  customerId          Int
+  customer            Customer        @relation(fields: [customerId], references: [id])
+  contactId           Int?
+  contact             CustomerContact? @relation(fields: [contactId], references: [id])
+  dealValue           Float
+  dealStage           String
+  probability         Float
+  expectedClosingDate DateTime?
+  salespersonId       Int?
+  salesperson         User?           @relation("DealSalesperson", fields: [salespersonId], references: [id])
+  status              String
+  lostReason          String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  deletedAt           DateTime?
+  products            DealProduct[]
+  notes               DealNote[]
+  activities          Activity[]      @relation("DealActivities")
+}
+
+model DealProduct {
+  id        Int      @id @default(autoincrement())
+  dealId    Int
+  deal      Deal     @relation(fields: [dealId], references: [id])
+  name      String
+  quantity  Float
+  unitPrice Float
+  discount  Float    @default(0.0)
+  tax       Float    @default(0.0)
+  total     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DealNote {
+  id        Int      @id @default(autoincrement())
+  dealId    Int
+  deal      Deal     @relation(fields: [dealId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  note      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Activity {
+  id                 Int       @id @default(autoincrement())
+  title              String
+  type               String
+  relatedLeadId      Int?
+  lead               Lead?     @relation("LeadActivities", fields: [relatedLeadId], references: [id])
+  relatedCustomerId  Int?
+  customer           Customer? @relation("CustomerActivities", fields: [relatedCustomerId], references: [id])
+  relatedDealId      Int?
+  deal               Deal?     @relation("DealActivities", fields: [relatedDealId], references: [id])
+  assignedEmployeeId Int?
+  assignedEmployee   User?     @relation("AssignedActivityEmployee", fields: [assignedEmployeeId], references: [id])
+  dueDate            DateTime?
+  priority           String
+  status             String
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model Quotation {
+  id                 Int             @id @default(autoincrement())
+  quotationNumber    String          @unique
+  customerId         Int
+  customer           Customer        @relation(fields: [customerId], references: [id])
+  contactId          Int?
+  contact            CustomerContact? @relation(fields: [contactId], references: [id])
+  quotationDate      DateTime
+  validityDate       DateTime?
+  subtotal           Float
+  discountAmount     Float           @default(0.0)
+  taxAmount          Float           @default(0.0)
+  grandTotal         Float
+  paymentTerms       String?
+  termsAndConditions String?
+  notes              String?
+  salespersonId      Int?
+  salesperson        User?           @relation("QuotationSalesperson", fields: [salespersonId], references: [id])
+  status             String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  deletedAt          DateTime?
+  items              QuotationItem[]
+  salesOrders        SalesOrder[]
+}
+
+model QuotationItem {
+  id          Int       @id @default(autoincrement())
+  quotationId Int
+  quotation   Quotation @relation(fields: [quotationId], references: [id])
+  name        String
+  quantity    Float
+  unitPrice   Float
+  discount    Float     @default(0.0)
+  tax         Float     @default(0.0)
+  total       Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model SalesOrder {
+  id                 Int             @id @default(autoincrement())
+  salesOrderNumber   String          @unique
+  customerId         Int
+  customer           Customer        @relation(fields: [customerId], references: [id])
+  contactId          Int?
+  contact            CustomerContact? @relation(fields: [contactId], references: [id])
+  orderDate          DateTime
+  deliveryDate       DateTime?
+  deliveryAddress    String?
+  subtotal           Float
+  discountAmount     Float           @default(0.0)
+  taxAmount          Float           @default(0.0)
+  grandTotal         Float
+  paymentTerms       String?
+  notes              String?
+  status             String
+  quotationId        Int?
+  quotation          Quotation?      @relation(fields: [quotationId], references: [id])
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  deletedAt          DateTime?
+  items              SalesOrderItem[]
+}
+
+model SalesOrderItem {
+  id           Int        @id @default(autoincrement())
+  salesOrderId Int
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id])
+  name         String
+  quantity     Float
+  unitPrice    Float
+  discount     Float      @default(0.0)
+  tax          Float      @default(0.0)
+  total        Float
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model SalesTarget {
+  id             Int      @id @default(autoincrement())
+  salespersonId  Int
+  salesperson    User     @relation("SalespersonTarget", fields: [salespersonId], references: [id])
+  month          Int?
+  quarter        Int?
+  year           Int
+  targetAmount   Float
+  achievedAmount Float    @default(0.0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Notification {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  user              User     @relation(fields: [userId], references: [id])
+  title             String
+  message           String
+  isRead            Boolean  @default(false)
+  type              String?
+  relatedRecordId   Int?
+  relatedRecordType String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  module    String
+  recordId  Int?
+  oldValue  String?
+  newValue  String?
+  timestamp DateTime @default(now())
+}
